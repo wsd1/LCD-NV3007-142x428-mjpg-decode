@@ -1,0 +1,6 @@
+{
+  "idf.customExtraVars": {},
+  "idf.currentSetup": "/Users/wsd1/.espressif/release-v6.1/esp-idf",
+  "idf.port": "/dev/tty.usbmodem2101",
+  "idf.flashType": "UART"
+}
