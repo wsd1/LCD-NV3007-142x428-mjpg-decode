@@ -20,8 +20,12 @@
 
 static const char *TAG = "MAIN";
 
+/* 视频文件路径缓存区 */
+static char mjpgDirs[2048] = {0};
+static char *mjpgDirPtr = mjpgDirs;
+
 /**
- * @brief 扫描 SD卡上的 MJPEG 文件
+ * @brief 扫描 SD卡上的 MJPEG 文件并紧凑存储到 mjpgDirs 中
  */
 static void scan_mjpeg_files(void)
 {
@@ -31,19 +35,43 @@ static void scan_mjpeg_files(void)
         return;
     }
 
-    ESP_LOGI(TAG, "Files on SD card:");
+    /* 重置指针到缓冲区开头 */
+    mjpgDirPtr = mjpgDirs;
+    memset(mjpgDirs, 0, sizeof(mjpgDirs));
+
+    ESP_LOGI(TAG, "Scanning SD card for MJPEG files...");
     struct dirent *entry;
     int mjpeg_count = 0;
+
     while ((entry = readdir(dir)) != NULL) {
-        ESP_LOGI(TAG, "  %s", entry->d_name);
         /* 检查是否是 MJPEG 文件 */
         char *ext = strrchr(entry->d_name, '.');
         if (ext && (strcasecmp(ext, ".mjpeg") == 0 || strcasecmp(ext, ".mjpg") == 0)) {
-            mjpeg_count++;
+            
+            /* 构造完整路径 */
+            char full_path[256];
+            int path_len = snprintf(full_path, sizeof(full_path), "/sdcard/%s", entry->d_name);
+            
+            if (path_len < 0 || path_len >= sizeof(full_path)) {
+                ESP_LOGW(TAG, "Filename too long: %s", entry->d_name);
+                continue;
+            }
+
+            /* 检查剩余空间是否足够 (路径长度 + '\0') */
+            size_t required_size = path_len + 1;
+            if ((mjpgDirs + sizeof(mjpgDirs)) - mjpgDirPtr >= required_size) {
+                memcpy(mjpgDirPtr, full_path, required_size);
+                mjpgDirPtr += required_size; // 移动指针到下一个存储位置
+                mjpeg_count++;
+                ESP_LOGI(TAG, "  Added: %s", full_path);
+            } else {
+                ESP_LOGW(TAG, "Buffer full, skipping remaining files");
+                break; 
+            }
         }
     }
     closedir(dir);
-    ESP_LOGI(TAG, "Found %d MJPEG files", mjpeg_count);
+    ESP_LOGI(TAG, "Found and stored %d MJPEG files", mjpeg_count);
 }
 
 void app_main(void)
@@ -72,15 +100,7 @@ void app_main(void)
     /* 3. 扫描 SD卡文件 */
     scan_mjpeg_files();
 
-    /* 4. 检查视频文件是否存在 */
-    if (!sd_card_file_exists(MJPEG_FILE_PATH)) {
-        ESP_LOGE(TAG, "Video file not found: %s", MJPEG_FILE_PATH);
-        ESP_LOGI(TAG, "Please copy a MJPEG file to SD card as '%s'", MJPEG_FILE_PATH);
-        sd_card_deinit();
-        return;
-    }
-
-    /* 5. 创建视频渲染实例 */
+    /* 4. 创建视频渲染实例 */
     ret = create_video_render(30);  // 30 fps
     if (ret != 0) {
         ESP_LOGE(TAG, "Failed to create video render");
@@ -88,22 +108,36 @@ void app_main(void)
         return;
     }
 
-    /* 6. 播放视频 */
-    ESP_LOGI(TAG, "Starting video playback...");
+    /* 5. 播放视频 */
+    ESP_LOGI(TAG, "Starting video playlist...");
     ESP_LOGI(TAG, "Press reset to stop");
 
-    /* 无限循环播放 */
+    /* 无限循环播放整个列表 */
     while (1) {
-        ret = video_play_mjpeg(MJPEG_FILE_PATH, 20, true);  // 循环播放
-        if (ret != 0) {
-            ESP_LOGE(TAG, "Playback failed");
+        char *current_path = mjpgDirs;
+
+        /* 遍历紧凑存储的字符串缓冲区 */
+        while (current_path < (mjpgDirs + sizeof(mjpgDirs)) && *current_path != '\0') {
+            ESP_LOGI(TAG, "Now playing: %s", current_path);
+            ret = video_play_mjpeg(current_path, 20, false); // 单文件不循环
+            if (ret != 0) {
+                ESP_LOGE(TAG, "Playback failed for %s", current_path);
+            }
+
+            /* 跳过当前字符串及其尾部的 '\0'，寻找下一个有效路径 */
+            current_path += strlen(current_path) + 1;
+        }
+
+        if (mjpgDirs[0] == '\0') {
+            ESP_LOGE(TAG, "No videos to play in buffer!");
             break;
         }
-        ESP_LOGI(TAG, "Playback completed, restarting...");
+
+        ESP_LOGI(TAG, "Playlist completed, restarting...");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    /* 7. 清理 */
+    /* 6. 清理 */
     destroy_video_render();
     sd_card_deinit();
 
