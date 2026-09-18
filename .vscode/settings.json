@@ -1,6 +1,17 @@
 {
-  "idf.customExtraVars": {},
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32s3"
+  },
   "idf.currentSetup": "/Users/wsd1/.espressif/release-v6.1/esp-idf",
   "idf.port": "/dev/tty.usbmodem2101",
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "idf.openOcdConfigs": [
+    "board/esp32s3-builtin.cfg"
+  ],
+  "clangd.path": "/Users/wsd1/.espressif/tools/esp-clangd/esp-21.1.3_20260408/esp-clangd/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=/Volumes/RAM_DISK/idf-test/LCD-NV3007-142x428-mjpg-decode/build"
+  ]
 }
