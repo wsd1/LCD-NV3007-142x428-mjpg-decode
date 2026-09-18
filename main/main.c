@@ -101,7 +101,7 @@ void app_main(void)
     scan_mjpeg_files();
 
     /* 4. 创建视频渲染实例 */
-    ret = create_video_render(30);  // 30 fps
+    ret = create_video_render(15);  // 30 fps
     if (ret != 0) {
         ESP_LOGE(TAG, "Failed to create video render");
         sd_card_deinit();
@@ -119,7 +119,7 @@ void app_main(void)
         /* 遍历紧凑存储的字符串缓冲区 */
         while (current_path < (mjpgDirs + sizeof(mjpgDirs)) && *current_path != '\0') {
             ESP_LOGI(TAG, "Now playing: %s", current_path);
-            ret = video_play_mjpeg(current_path, 20, false); // 单文件不循环
+            ret = video_play_mjpeg(current_path, 15, false); // 单文件不循环
             if (ret != 0) {
                 ESP_LOGE(TAG, "Playback failed for %s", current_path);
             }

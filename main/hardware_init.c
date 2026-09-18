@@ -25,11 +25,12 @@ static const char *TAG = "HW_INIT";
 static esp_lcd_panel_handle_t s_lcd_panel = NULL;
 static esp_lcd_panel_io_handle_t s_lcd_io = NULL;
 static sdmmc_card_t *s_sd_card = NULL;
-
-/* SPI 传输完成信号量 */
+/* 
+// SPI 传输完成信号量 
 static SemaphoreHandle_t s_trans_done = NULL;
 
-/* LCD DMA 缓冲区 */
+
+// LCD DMA 缓冲区 
 static uint16_t s_lcd_buf[LCD_H_RES * CHUNK_LINES];
 
 static bool IRAM_ATTR on_color_trans_done(esp_lcd_panel_io_handle_t io,
@@ -40,7 +41,7 @@ static bool IRAM_ATTR on_color_trans_done(esp_lcd_panel_io_handle_t io,
     xSemaphoreGiveFromISR(s_trans_done, &hp_task_woken);
     return hp_task_woken == pdTRUE;
 }
-
+*/
 /**
  * @brief 初始化 LCD 背光
  */
@@ -65,12 +66,12 @@ esp_err_t lcd_init(void)
 
     ESP_LOGI(TAG, "Initializing NV3007 LCD...");
 
-    /* 创建信号量 */
+    /* 创建信号量
     s_trans_done = xSemaphoreCreateBinary();
     if (s_trans_done == NULL) {
         ESP_LOGE(TAG, "Failed to create semaphore");
         return ESP_ERR_NO_MEM;
-    }
+    } */
 
     /* 初始化背光 */
     lcd_backlight_init();
@@ -86,7 +87,7 @@ esp_err_t lcd_init(void)
 
     /* 2. 创建 Panel IO */
     esp_lcd_panel_io_spi_config_t io_cfg = NV3007_PANEL_IO_SPI_CONFIG(
-        LCD_PIN_CS, LCD_PIN_DC, on_color_trans_done, NULL);
+        LCD_PIN_CS, LCD_PIN_DC, NULL, NULL);
     ret = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_SPI_HOST, &io_cfg, &s_lcd_io);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create panel IO: %s", esp_err_to_name(ret));
